@@ -1,12 +1,16 @@
 # main.py
+import asyncio
+import time
+
 import discord
+from CoroCron.Cron import Cron
 from discord.ext import commands
-from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
 
 
 def getStuff(homeRoomIndex, examsOption=False):
@@ -35,7 +39,8 @@ def getStuff(homeRoomIndex, examsOption=False):
 
     # Select class from dropdown
     drpClass = Select(driver.find_element(By.XPATH, "/html/body/form/div[3]/table/tbody/tr/td[1]/select"))
-    drpClass.select_by_index(homeRoomIndex)
+    drpClass.select_by_value(str(homeRoomIndex))
+    time.sleep(5)
 
     # Select what to output, exams or schedule changes in regard to exams variable; app controller later
     if examsOption:
@@ -58,7 +63,8 @@ def getStuff(homeRoomIndex, examsOption=False):
         changesTXT = driver.find_element(By.XPATH,
                                          "/html/body/form/div[3]/div[1]/div")  # Get the text element
 
-        if changesTXT == 'אין שינויים':  # if this do this
+        print(changesTXT.text)
+        if changesTXT.text == 'אין שינויים':  # if this do this
             txtToReturn = 'No schedule changes'
         else:
             txtToReturn = changesTXT.text
@@ -71,17 +77,43 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='$', intents=intents)
 
 
+async def sendStuff():
+    channel = bot.get_channel(953638497120579664)  # set channel
+    await bot.wait_until_ready()  # Make sure your guild cache is ready so the channel can be found via get_channel
+    t1 = getStuff(17)
+    t2 = getStuff(18)
+    t3 = getStuff(19)
+
+    await channel.send('ט1:')
+    await channel.send('```\n' + str(t1) + '\n```')
+    await channel.send('ט2:')
+    await channel.send('```\n' + str(t2) + '\n```')
+    await channel.send('ט3:')
+    await channel.send('```\n' + str(t3) + '\n```')
+
+
+@bot.event
+async def on_ready():
+    print('We\'re in!')
+    Cron1 = Cron()
+    Cron1.Job().Hours(7).Minutes(30).Do(sendStuff)
+    await Cron1.Start(blocking=False)
+    loop = asyncio.get_event_loop()
+    asyncio.ensure_future(Cron1.Start())
+    loop.run_forever()
+
+
 @bot.command(name='send')
 async def send(message, arg1=0):
     arg1index = 16 + arg1
+    print(arg1index)
     if arg1 == 0:
         await message.channel.send('Failure to provide arguments')
     else:
-        await message.channel.send('ט' + str(arg1))
+        await message.channel.send('ט' + str(arg1) + ':')
         loadingMsg = await message.channel.send('Loading...')
-        await message.channel.send(getStuff(arg1index, toggle))
-        await loadingMsg.delete()
+        await loadingMsg.edit(content='\n```\n' + (str(getStuff(arg1index, toggle))) + '\n```')
 
 
 toggle = False
-bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.GAPy_9.4u3v7dI7dRoG765ZRYtffPv7Izi3mBiV10CeZw')
+bot.run('token')
