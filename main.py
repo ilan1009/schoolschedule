@@ -1,6 +1,5 @@
 # main.py
 import asyncio
-import time
 
 import discord
 from CoroCron.Cron import Cron
@@ -40,8 +39,6 @@ def getStuff(homeRoomIndex, examsOption=False):
     # Select class from dropdown
     drpClass = Select(driver.find_element(By.XPATH, "/html/body/form/div[3]/table/tbody/tr/td[1]/select"))
     drpClass.select_by_value(str(homeRoomIndex))
-    time.sleep(5)
-
     # Select what to output, exams or schedule changes in regard to exams variable; app controller later
     if examsOption:
         examButton = driver.find_element(By.XPATH,
@@ -96,7 +93,7 @@ async def sendStuff():
 async def on_ready():
     print('We\'re in!')
     Cron1 = Cron()
-    Cron1.Job().Hours(7).Minutes(30).Do(sendStuff)
+    Cron1.Job().Weekdays([6, 0, 1, 2, 3, 4]).Hours(7).Minutes(30).Do(sendStuff)
     await Cron1.Start(blocking=False)
     loop = asyncio.get_event_loop()
     asyncio.ensure_future(Cron1.Start())
