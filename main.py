@@ -18,7 +18,7 @@ def getStuff(homeRoomIndex, examsOption=False):
     homeRoomIndex, examsOption = homeRoomIndex, examsOption
 
     options = Options()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
 
     # Launch web driver
     driver = webdriver.Chrome(chrome_options=options)
@@ -75,7 +75,7 @@ bot = commands.Bot(command_prefix='$', intents=intents)
 
 
 async def sendStuff():
-    channel = bot.get_channel(953638497120579664)  # set channel
+    channel = bot.get_channel(1033324125843894283)  # set channel
     await bot.wait_until_ready()  # Make sure your guild cache is ready so the channel can be found via get_channel
     t1 = getStuff(17)
     t2 = getStuff(18)
@@ -113,4 +113,4 @@ async def send(message, arg1=0):
 
 
 toggle = False
-bot.run('token')
+bot.run('place')
