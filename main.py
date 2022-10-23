@@ -24,21 +24,14 @@ def getStuff(homeRoomIndex, examsOption=False):
     driver = webdriver.Chrome(chrome_options=options)
     driver.get(url)
 
-    wait = WebDriverWait(driver, 10)
-    wait.until(ec.visibility_of_element_located((By.XPATH,
-                                                 "/html/body/div[1]/div/div[3]/div/main/div/div/div/div["
-                                                 "2]/div/div/div/section/div[2]/div/div["
-                                                 "2]/div/div/wix-iframe/div/iframe")))
-
-    # Enter iframe containing elements
-    frame = driver.find_element(By.XPATH,
-                                "/html/body/div[1]/div/div[3]/div/main/div/div/div/div[2]/div/div/div/section/div["
-                                "2]/div/div[2]/div/div/wix-iframe/div/iframe")
+    frame = WebDriverWait(driver, 10).until(ec.visibility_of_element_located((By.CSS_SELECTOR,
+                                                                              'div#comp-kg9mlfwo iframe')))
     driver.switch_to.frame(frame)
 
     # Select class from dropdown
-    drpClass = Select(driver.find_element(By.XPATH, "/html/body/form/div[3]/table/tbody/tr/td[1]/select"))
+    drpClass = Select(driver.find_element(By.CSS_SELECTOR, "#TimeTableView1_ClassesList"))
     drpClass.select_by_value(str(homeRoomIndex))
+
     # Select what to output, exams or schedule changes in regard to exams variable; app controller later
     if examsOption:
         examButton = driver.find_element(By.XPATH,
@@ -53,12 +46,12 @@ def getStuff(homeRoomIndex, examsOption=False):
         return txtToReturn
 
     else:
-        changesButton = driver.find_element(By.XPATH,
-                                            "/html/body/form/div[3]/table/tbody/tr/td[7]/a")  # Select schedule tab
+        changesButton = driver.find_element(By.CSS_SELECTOR,
+                                            "#TimeTableView1_btnChanges")  # Select schedule tab
         changesButton.click()
 
-        changesTXT = driver.find_element(By.XPATH,
-                                         "/html/body/form/div[3]/div[1]/div")  # Get the text element
+        changesTXT = driver.find_element(By.CSS_SELECTOR,
+                                         '#TimeTableView1_PlaceHolder > div')  # Get the text element
 
         print(changesTXT.text)
         if changesTXT.text == 'אין שינויים':  # if this do this
