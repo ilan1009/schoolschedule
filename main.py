@@ -39,22 +39,46 @@ def get_stuff(home_room_index):
     changes_txt = driver.find_element(By.CSS_SELECTOR,
                                       '#TimeTableView1_PlaceHolder > div')  # Get the text element
 
-    print(changes_txt.text)
+    # print(changes_txt.text)
     if changes_txt.text == 'אין שינויים':  # if this do this
         return "No schedule changes"
     else:
-        print(changes_txt.text)
+        tmpfile = open('tmpfile.txt', 'w', encoding="utf-8")
+        tmpfile.truncate(0)
+        tmpfile.write(changes_txt.text)
+        tmpfile.close()
 
-        lines = changes_txt.text.splitlines()
+        tmpfile = open('tmpfile.txt', 'r', encoding="utf-8")
+        tmpfileout = open('tmpfileout.txt', 'w', encoding="utf-8")
+        tmpfileout.truncate()
+        while 1:
+            # Get next line from file
+            line = tmpfile.readline()
 
-        for line in lines():
+            # if line is empty
+            # end of file is reached
+            if not line:
+                break
             if 'ביטול שעור' in line:
+                # print("Line{}: {}".format(count, line.strip()))
                 for i in range(8):
-                    if (' שיעור' + i) in line:
-                        print(str(i) + ', cancelled?')
+                    if ('שיעור ' + str(i)) in line:
+                        # print(f'Period {str(i)} cancelled! W')
+                        tmpfileout.write(f'Period {str(i)} cancelled! W\n')
+            else:
+                tmpfileout.write(line)
 
+        tmpfileout.close()
+        tmpfile.close()
 
-        return changes_txt.text
+        tmpfileout = open('tmpfileout.txt', 'r+', encoding="utf-8")
+        out = tmpfileout.read()
+        print(out)
+
+        tmpfileout.close()
+
+        return out
+
 
 intents = discord.Intents.all()
 
@@ -115,4 +139,4 @@ async def send(message, arg1=0):
 
 
 toggle = False
-bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.Gyg2Mt.G_ALC_MsIPX_haQqiJ3JXJ1TzjZiT6VJ_LmqLk')
+bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.GGQtOy.J0hwwRR4XfIzEvrUVPvrRm5pcsMoAVF09pU2TY')
