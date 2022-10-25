@@ -59,14 +59,14 @@ def get_stuff(home_room):
     # Some kind of hard to read text formatting ahead; not the most optimal way.
 
     # Open the file, clear it and write new text
-    with open('tmp_file.txt', 'w', encoding="utf-8") as tmp_file:
+    with open('vars/tmp_file.txt', 'w', encoding="utf-8") as tmp_file:
         tmp_file.truncate(0)
         tmp_file.write(changes_txt.text)
         tmp_file.close()
 
     # Open the files again and truncate
-    with open('tmp_file.txt', 'r', encoding="utf-8") as tmp_file, \
-         open('tmp_file_out.txt', 'w', encoding="utf-8") as tmp_file_out:
+    with open('vars/tmp_file.txt', 'r', encoding="utf-8") as tmp_file, \
+            open('vars/tmp_file_out.txt', 'w', encoding="utf-8") as tmp_file_out:
         tmp_file_out.truncate()
         while 1:
             # Get next line from file
@@ -86,12 +86,18 @@ def get_stuff(home_room):
                     if 'לשיעור ' + str(i) in line:
                         lesson = line.split(' לשיעור')[0].split(', ')[2]
                         tmp_file_out.write(f'Class "{lesson}" moved to period {str(i)}')
+            elif 'מילוי מקום' in line:
+                for i in range(8):
+                    if 'שיעור ' + str(i) in line:
+                        lesson = line.split(', ')[4]
+                        print(lesson)
+                        tmp_file_out.write(f'Period {str(i)} replaced with class "{lesson}"')
 
             else:
                 tmp_file_out.write(line)
 
     # Read file and return it
-    with open('tmp_file_out.txt', 'r+', encoding="utf-8") as tmp_file_out:
+    with open('vars/tmp_file_out.txt', 'r+', encoding="utf-8") as tmp_file_out:
         out = tmp_file_out.read()
         tmp_file_out.truncate()
 
@@ -110,7 +116,6 @@ async def send_stuff():
 
     print('Sending daily morning message')
 
-    channel = bot.get_channel(1033324125843894283)  # set channel
     await bot.wait_until_ready()  # Make sure your guild cache is ready
 
     t_1 = get_stuff('ט - 1')  # ט1
@@ -134,8 +139,20 @@ async def on_ready():
     scheduler = AsyncIOScheduler()
     print('Scheduler initiated')
 
+    # Read file to get previously saved ID
+    with open('vars/morningid.txt', 'r') as channelfile:
+        # Issue a warning
+        if channelfile.readline() == '':
+            print('SET CHANNEL URGENTLY')
+        else:
+            global channel  # Set global variable
+            channelfile.seek(0)
+            channelid = channelfile.read()
+            channel = bot.get_channel(int(channelid))
+            print(channel.name)
+
     # Job that runs send_stuff every day at 7:00
-    scheduler.add_job(send_stuff, CronTrigger(day_of_week="0, 1, 2, 3, 4, 6", hour="7"))
+    scheduler.add_job(send_stuff, CronTrigger(day_of_week="0, 1, 2, 3, 4, 6", hour="7", minute="0", second="30"))
     scheduler.start()  # Start
 
 
@@ -155,5 +172,13 @@ async def send(message, arg1=0):
         print('Task completed successfully')
 
 
-toggle = False
-bot.run('69')
+@bot.command(name='setchannel')
+async def setchannel(ctx):
+    """Sets the morning message to send to this channel."""
+    with open('vars/morningid.txt', 'a+') as channelfile:
+        channelfile.truncate(0)
+        channelfile.write(str(ctx.channel.id))
+        print(ctx.channel.name)
+
+
+bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.G9DLiS.mv8VEZ_cnAx8P5mkqcYlCMutRTfHvodzQurqsE')
