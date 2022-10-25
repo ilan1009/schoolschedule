@@ -43,8 +43,18 @@ def get_stuff(home_room_index):
     if changes_txt.text == 'אין שינויים':  # if this do this
         return "No schedule changes"
     else:
-        return changes_txt.text
+        print(changes_txt.text)
 
+        lines = changes_txt.text.splitlines()
+
+        for line in lines():
+            if 'ביטול שעור' in line:
+                for i in range(8):
+                    if (' שיעור' + i) in line:
+                        print(str(i) + ', cancelled?')
+
+
+        return changes_txt.text
 
 intents = discord.Intents.all()
 
@@ -91,7 +101,7 @@ async def send(message, arg1=0):
     """A command, Listens for $send, where $ is the prefix. when run with the correct arguments it will return the
     schedule changes of the selected class using the get_stuff() function."""
 
-    print('Command send requested; ' + message)
+    print('Command send requested')
 
     arg1index = 16 + arg1
 
@@ -105,4 +115,4 @@ async def send(message, arg1=0):
 
 
 toggle = False
-bot.run('place')
+bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.Gyg2Mt.G_ALC_MsIPX_haQqiJ3JXJ1TzjZiT6VJ_LmqLk')
