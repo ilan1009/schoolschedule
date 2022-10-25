@@ -27,7 +27,7 @@ def get_stuff(home_room):
     options.add_argument("--headless")
 
     # Launch web driver
-    driver = webdriver.Chrome(chrome_options=options)
+    driver = webdriver.Chrome(options=options)
     driver.get(url)
 
     # Enter IFRAME element
@@ -53,56 +53,49 @@ def get_stuff(home_room):
     #                          #
     ############################
 
-    if changes_txt.text == 'אין שינויים':  # If empty just print that
+    if changes_txt.text == 'אין שינויים':  # If empty just print that and return
         return "No schedule changes"
 
-    # Some kind of hard to read text formatting; not the most optimal way.
-    else:
-        # Open the file, clear it and write new text
-        tmpfile = open('tmpfile.txt', 'w', encoding="utf-8")
-        tmpfile.truncate(0)
-        tmpfile.write(changes_txt.text)
-        tmpfile.close()
+    # Some kind of hard to read text formatting ahead; not the most optimal way.
 
-        # Open the files again and truncate
-        tmpfile = open('tmpfile.txt', 'r', encoding="utf-8")
-        tmpfileout = open('tmpfileout.txt', 'w', encoding="utf-8")
-        tmpfileout.truncate()
+    # Open the file, clear it and write new text
+    with open('tmp_file.txt', 'w', encoding="utf-8") as tmp_file:
+        tmp_file.truncate(0)
+        tmp_file.write(changes_txt.text)
+        tmp_file.close()
+
+    # Open the files again and truncate
+    with open('tmp_file.txt', 'r', encoding="utf-8") as tmp_file, \
+         open('tmp_file_out.txt', 'w', encoding="utf-8") as tmp_file_out:
+        tmp_file_out.truncate()
         while 1:
             # Get next line from file
-            line = tmpfile.readline()
+            line = tmp_file.readline()
 
             # if line is empty
             # end of file is reached
-            '25.10.2022, שיעור 1, פירשטמן מני, ביטול שעור'
             if not line:
                 break
             if 'ביטול שעור' in line:
                 # print("Line{}: {}".format(count, line.strip()))
                 for i in range(8):
-                    if ('שיעור ' + str(i)) in line:
-                        tmpfileout.write(f'Period {str(i)} cancelled! W\n')
+                    if 'שיעור ' + str(i) in line:
+                        tmp_file_out.write(f'Period {str(i)} cancelled! W\n')
             elif 'הזזת שיעור' in line:
                 for i in range(8):
-                    if ('לשיעור ' + str(i)) in line:
+                    if 'לשיעור ' + str(i) in line:
                         lesson = line.split(' לשיעור')[0].split(', ')[2]
-                        tmpfileout.write(f'Class "{lesson}" moved to period {str(i)}')
+                        tmp_file_out.write(f'Class "{lesson}" moved to period {str(i)}')
 
             else:
-                tmpfileout.write(line)
+                tmp_file_out.write(line)
 
-        # Save files
-        tmpfileout.close()
-        tmpfile.close()
+    # Read file and return it
+    with open('tmp_file_out.txt', 'r+', encoding="utf-8") as tmp_file_out:
+        out = tmp_file_out.read()
+        tmp_file_out.truncate()
 
-        # Read file and return it
-        tmpfileout = open('tmpfileout.txt', 'r+', encoding="utf-8")
-        out = tmpfileout.read()
-        print(out)
-
-        tmpfileout.close()
-
-        return out
+    return out
 
 
 # Some options
@@ -142,14 +135,14 @@ async def on_ready():
     print('Scheduler initiated')
 
     # Job that runs send_stuff every day at 7:00
-    scheduler.add_job(send_stuff, CronTrigger(day_of_week="0, 1, 2, 3, 4, 6", hour="7", minute="0", second="0"))
+    scheduler.add_job(send_stuff, CronTrigger(day_of_week="0, 1, 2, 3, 4, 6", hour="7"))
     scheduler.start()  # Start
 
 
 @bot.command(name='send')
 async def send(message, arg1=0):
-    """A command, Listens for $send, where $ is the prefix. when run with the correct arguments it will return the
-    schedule changes of the selected class using the get_stuff() function."""
+    """A command, Listens for $send, where $ is the prefix. when run with the correct arguments it
+     will return the schedule changes of the selected class using the get_stuff() function."""
 
     print('Command send requested')
 
