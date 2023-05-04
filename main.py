@@ -99,59 +99,6 @@ async def get_table_schedule(home_room, driver, day):
     return "\n------------------------------------------\n".join(out)
 
 
-async def get_stuff(home_room, driver):
-    """Gets the schedule changes for specific class and return using SELENIUM WEB DRIVER"""
-
-    # Select class from dropdown
-    drp_class = WebDriverWait(driver, 10).until(
-        ec.visibility_of_element_located((By.CSS_SELECTOR, '#TimeTableView1_ClassesList')))
-    drp_class = Select(drp_class)
-    drp_class.select_by_visible_text(str(home_room))
-
-    # Select schedule and click it with JS
-    changes_button = WebDriverWait(driver, 10).until(
-        ec.visibility_of_element_located((By.CSS_SELECTOR, '#TimeTableView1_btnChanges')))
-    changes_button.click()
-
-    # Get the text element hidden in the schedule tab
-    changes_txt = WebDriverWait(driver, 10).until(
-        ec.visibility_of_element_located((By.CSS_SELECTOR, '#TimeTableView1_PlaceHolder')))
-
-    return formatRawSchedule(changes_txt.text)
-
-
-def formatRawSchedule(rawschedule):
-    if rawschedule == "אין שינויים":  # if empty
-        return "אין שינויים, לך תבכה אבל אל תשכח, יש לימודים ב8:15"
-    data = []
-    for i in range(8):
-        data.append(' \n')
-    for line in rawschedule.split('\n'):
-        if 'ביטול שעור' in line:
-            for i in range(8):
-                if 'שיעור ' + str(i) in line:
-                    data[i - 1] = f'Period {str(i)} cancelled! W\n'
-        elif 'הזזת שיעור' in line:
-            for i in range(8):
-                if 'לשיעור ' + str(i) in line:
-                    lesson = line.split(' לשיעור')[0].split(', ')[2]
-                    data[i - 1] = f'Class "{lesson}" moved to period {str(i)}\n'
-
-        elif 'מילוי מקום' in line:
-            for i in range(8):
-                if 'שיעור ' + str(i) in line:
-                    lesson = line.split(', ')[4]
-                    print(lesson)
-                    data[i - 1] = f'Period {str(i)} replaced with class "{lesson}"\n'
-
-        elif 'החלפת חדר' in line:
-            for i in range(8):
-                if 'שיעור ' + str(i) in line:
-                    data[i - 1] = line
-    out = ""
-    return out.join(data)
-
-
 # Some options
 intents = discord.Intents.all()
 
@@ -208,7 +155,7 @@ async def on_ready():
 @bot.command(name='send')
 async def send(message, arg1, arg2=-1):
     """A command, Listens for $send, where $ is the prefix. when run with the correct arguments it
-     will return the schedule changes of the selected class using the get_stuff() function."""
+     will return the schedule of the selected class and day """
 
     print('Command send requested')
 
@@ -245,34 +192,6 @@ async def send(message, arg1, arg2=-1):
     print('Task completed successfully')
 
 
-@bot.command(name='sendold')
-async def sendold(message, arg1):
-    """A command, Listens for $send, where $ is the prefix. when run with the correct arguments it
-     will return the schedule changes of the selected class using the get_stuff() function."""
-
-    print('Command send requested')
-
-    if not arg1:
-        await message.channel.send('Failure to provide arguments')
-
-    try:
-        arg1 = int(arg1)
-        if arg1 < 1 or arg1 > 7:
-            raise ValueError
-    except ValueError:
-        await message.channel.send(
-            'Invalid argument. Please provide an integer between 1 and 7 corresponding to classroom number\n'
-            'for example, 4 => ט-4.')
-        return
-
-    else:
-        await message.channel.send('ט' + str(int(arg1)) + ':')
-        loading_msg = await message.channel.send('Loading...')
-        g = await get_stuff(f'ט - {arg1}', driver)
-        await loading_msg.edit(content=(str(g)))
-        print('Task completed successfully')
-
-
 @bot.command(name='setchannel')
 async def setchannel(ctx):
     """Sets the morning message to send to this channel."""
@@ -282,4 +201,6 @@ async def setchannel(ctx):
         print(ctx.channel.name)
 
 
-bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.GiH6ie.SpWYEyTQiV-26vbVyMwnaDLj42ixs8TOH8dcY0')
+bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.GmoKoX.d5zUsi0MGmll4BiJTU8jHHer4y0XIaJxOeIy54')
+
+# print(get_table_schedule('ט - 1', driver))
