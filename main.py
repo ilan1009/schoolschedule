@@ -105,7 +105,8 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='$', intents=intents)
 
 
-async def send_stuff():
+@bot.command(name='sendBigMessage')
+async def send_stuff(message):
     """Function to schedule the sending of the schedule changes of the selected classes when
     called at 7:00 every school day by a Cron"""
 
@@ -115,12 +116,13 @@ async def send_stuff():
 
     classes = []
     for i in range(0, 7):
-        c_i = await get_table_schedule('ט - ' + str(i + 1), driver)
+        c_i = await get_table_schedule('ט - ' + str(i + 1), driver, -1)
         classes.append(c_i)
 
     for i in range(0, len(classes)):
         await channel.send(
-            ('ט - ' + str(i + 1)) + classes[i] + '\n------------------------------------------\n..ilan -//h...')
+            "###########   **" + f"כיתה ט-{i}" + '**   ###########\n------------------------------------------\n' +
+            classes[i] + '\n------------------------------------------\n..ilan -//h...')
 
 
 @bot.event
@@ -148,7 +150,7 @@ async def on_ready():
 
     # await send_stuff()
     # Job that runs send_stuff every day at 7:00
-    scheduler.add_job(send_stuff, CronTrigger(day_of_week="0, 1, 2, 3, 4, 6", hour="6", minute="50", second="0"))
+    scheduler.add_job(send_stuff, 'cron', day_of_week="0, 1, 2, 3, 4, 6", hour="7", minute="5", second="0")
     scheduler.start()  # Start
 
 
@@ -201,6 +203,6 @@ async def setchannel(ctx):
         print(ctx.channel.name)
 
 
-bot.run('MTAzMzE3NDc1NzQyMTYzMzU1Ng.GmoKoX.d5zUsi0MGmll4BiJTU8jHHer4y0XIaJxOeIy54')
+bot.run('token')
 
 # print(get_table_schedule('ט - 1', driver))
