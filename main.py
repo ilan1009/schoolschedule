@@ -11,6 +11,57 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 import datetime
 
+
+class MyView(discord.ui.View):
+    def __init__(self, day=-1):
+        super().__init__(timeout=None)
+        self.day = day
+        self.timeout = None
+
+    @discord.ui.select(  # the decorator that lets you specify the properties of the select menu
+        placeholder="Choose class",  # the placeholder text that will be displayed if nothing is selected
+        min_values=1,  # the minimum number of values that must be selected by the users
+        max_values=1,  # the maximum number of values that can be selected by the users
+        custom_id="class",
+        options=[
+            discord.SelectOption(
+                label="ט - 1",
+                description="כיתת הNPCS "
+            ),
+            discord.SelectOption(
+                label="ט - 2",
+                description="הבית של מקזסטי רובל"
+            ),
+            discord.SelectOption(
+                label="ט - 3",
+                description="תולדות אפור התחילו פה"
+            ),
+            discord.SelectOption(
+                label="ט - 4",
+                description="בהחלט אחד מהכיתות בכל הזמנים"
+            ),
+            discord.SelectOption(
+                label="ט - 5",
+                description="כיתה ט-5"
+            ),
+            discord.SelectOption(
+                label="ט - 6",
+                description="class"
+            ),
+            discord.SelectOption(
+                label="ט - 7",
+                description="choose a class"
+            ),
+        ]
+    )
+    async def select_callback(self, interaction, select):  # the function called when the user is done selecting options
+        g = await get_table_schedule(select.values[0], driver, self.day)
+        schedule = g[0]
+        title = g[1]
+        embedtosend = await makeEmbed(schedule, title)
+        await interaction.response.edit_message(embed=embedtosend, view=MyView(self.day))
+
+
 URL = "https://www.alliancetlv.com/עדכוני-מערכת"  # URL
 
 # Chrome options
@@ -47,6 +98,8 @@ async def get_table_schedule(home_room, driver, day):
     """Gets the schedule changes for specific class and return using SELENIUM WEB DRIVER"""
     if day < 0:
         day = await todayIs() + 1
+    if day == 7:
+        return [["No school on saturdays"]], "Saturday"
 
     # Select class from dropdown
     drp_class = WebDriverWait(driver, 10).until(
@@ -63,6 +116,8 @@ async def get_table_schedule(home_room, driver, day):
         ec.visibility_of_element_located((By.CSS_SELECTOR, '.TTTable > tbody:nth-child(1)')))
 
     rows = rowsHolder.find_elements(By.XPATH, '*')
+
+    daytitle = rows[0].find_elements(By.CSS_SELECTOR, ".CTitle")[day - 1].text
     rows.pop(0)
 
     hours = []
@@ -79,12 +134,27 @@ async def get_table_schedule(home_room, driver, day):
             hourLessonElements = hour.find_elements(By.CSS_SELECTOR, 'td.TableEventChange')
             if hourLessonElements:
                 for hourLesson in hourLessonElements:
-                    hourLessons.append(hourLesson.text)
+                    hourLessons.append('```' + hourLesson.text + '```')
+
+            hourLessonElements = hour.find_elements(By.CSS_SELECTOR, 'td.TableFillChange')
+            if hourLessonElements:
+                for hourLesson in hourLessonElements:
+                    hourLessons.append('```fix\n' + hourLesson.text + '```')
+
+            hourLessonElements = hour.find_elements(By.CSS_SELECTOR, 'td.TableFreeChange')
+            if hourLessonElements:
+                for hourLesson in hourLessonElements:
+                    hourLessons.append('```diff\n- ' + hourLesson.text + '```')
+
+            hourLessonElements = hour.find_elements(By.CSS_SELECTOR, 'td.TableExamChange')
+            if hourLessonElements:
+                for hourLesson in hourLessonElements:
+                    hourLessons.append('```md\n# ' + hourLesson.text + '```')
 
             hourLessonsElements = hour.find_elements(By.CSS_SELECTOR, '.TTLesson')
             if hourLessonsElements:
                 for hourLesson in hourLessonsElements:
-                    hourLessons.append(hourLesson.text)
+                    hourLessons.append('```' + hourLesson.text + '```')
 
             if hourLessons:
                 hourSchedules.append(hourLessons)
@@ -92,11 +162,33 @@ async def get_table_schedule(home_room, driver, day):
         except Exception as e:
             continue
 
+    """
     out = []
     for i, j in enumerate(hourSchedules):
         jjoined = '\n'.join(j)
         out.append(f'({i + 1}) | {jjoined}')
-    return "\n------------------------------------------\n".join(out)
+    return f"{home_room}, {daytitle}\n\n" + ("\n\n".join(out))
+    """
+    daytitle = f"{home_room}, {daytitle}"
+    return hourSchedules, daytitle
+
+
+async def makeEmbed(hourSchedules, title):
+    hourstitles = ["8:15 - 9:00", "9:00 - 9:45", "10:10, 10:55", "10:55 - 11:40", "12:00 -  12:45", "12:45 - 13:30",
+                   "13:50 - 14:30", "14:30 - 15:15"]
+    embed = discord.Embed(title=title, description="", color=discord.Colour.green())
+    for i, hourall in enumerate(hourSchedules):
+        k = 0
+        # joinedhour = '\n'.join(hour)
+        # print(hourstitles[i], joinedhour)
+        for hourspecific in hourall:
+            embed.add_field(name=hourstitles[i], value=hourspecific, inline=True)
+            k += 1
+            print(hourstitles[i], "\n", hourspecific)
+        for i in range(3 - k):
+            embed.add_field(name=chr(173), value=chr(173), inline=True)
+    embed.set_footer(text="bot made by ilan")
+    return embed
 
 
 # Some options
@@ -120,9 +212,7 @@ async def send_stuff(message):
         classes.append(c_i)
 
     for i in range(0, len(classes)):
-        await channel.send(
-            "###########   **" + f"כיתה ט-{i}" + '**   ###########\n------------------------------------------\n' +
-            classes[i] + '\n------------------------------------------\n..ilan -//h...')
+        await channel.send(str(classes[i]) + '\n.')
 
 
 @bot.event
@@ -155,24 +245,12 @@ async def on_ready():
 
 
 @bot.command(name='send')
-async def send(message, arg1, arg2=-1):
+async def send(message, arg2=-1):
     """A command, Listens for $send, where $ is the prefix. when run with the correct arguments it
      will return the schedule of the selected class and day """
 
     print('Command send requested')
 
-    if not arg1:
-        await message.channel.send('Failure to provide arguments')
-
-    try:
-        arg1 = int(arg1)
-        if arg1 < 1 or arg1 > 7:
-            raise ValueError
-    except ValueError:
-        await message.channel.send(
-            'Invalid argument. Please provide an integer between 1 and 7 corresponding to classroom number\n'
-            'for example, 4 => ט-4.')
-        return
     if arg2 != -1:
         arg2_v = f"day {arg2}"
         try:
@@ -184,13 +262,10 @@ async def send(message, arg1, arg2=-1):
                 'Invalid argument. Please provide an integer between 1 and 5 corresponding to the days sunday to thursday')
             return
     else:
-        await message.channel.send('Day not specified, sending todays schedule.')
+        await message.channel.send('Tip: specify the day with `$send 2` for example, monday.')
         arg2_v = "today"
 
-    await message.channel.send(f"Class {arg1}, {arg2_v}")
-    loading_msg = await message.channel.send('Loading...')
-    g = await get_table_schedule(f'ט - {arg1}', driver, arg2)
-    await loading_msg.edit(content=(str(g) + '\n------------------------------------------\n..ilan -//h...'))
+    await message.channel.send("Select a class to view its schedule", view=MyView(day=arg2))
     print('Task completed successfully')
 
 
@@ -203,6 +278,7 @@ async def setchannel(ctx):
         print(ctx.channel.name)
 
 
-bot.run('token')
+with open('token.txt', 'r') as file:
+    bot.run(file.read())
 
 # print(get_table_schedule('ט - 1', driver))
