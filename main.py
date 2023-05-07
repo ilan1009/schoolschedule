@@ -14,8 +14,8 @@ import datetime
 
 class MyView(discord.ui.View):
     @tasks.loop(minutes=3.0)
-    async def periodicallyEdit(self, interaction):
-        await self.edit(interaction)
+    async def periodicallyEdit(self):
+        await self.edit()
         print("edited")
 
     def __init__(self, day=-1):
@@ -24,6 +24,7 @@ class MyView(discord.ui.View):
         self.day = day
         self.timeout = None
         self.periodicallyEdit.start()
+        self.interaction = None
 
     @discord.ui.select(  # the decorator that lets you specify the properties of the select menu
         placeholder="Choose class",  # the placeholder text that will be displayed if nothing is selected
@@ -63,14 +64,16 @@ class MyView(discord.ui.View):
     )
     async def select_callback(self, interaction, select):  # the function called when the user is done selecting options
         self.currentclass = select.values[0]
+        self.interaction = interaction
 
-        await self.edit(interaction)
+        await self.edit()
 
-    async def edit(self, interaction):
-        g = await get_table_schedule(self.currentclass, driver, self.day)  # Get the schedule and title
-        schedule, title = g[0], g[1]  # Get the schedule and title
-        embedtosend = await makeEmbed(schedule, title)  # Make the embed
-        await interaction.response.edit_message(embed=embedtosend, view=MyView(self.day))  # Edit message correctly.
+    async def edit(self):
+        if self.interaction is not None:
+            g = await get_table_schedule(self.currentclass, driver, self.day)  # Get the schedule and title
+            schedule, title = g[0], g[1]  # Get the schedule and title
+            embedtosend = await makeEmbed(schedule, title)  # Make the embed
+            await self.interaction.response.edit_message(embed=embedtosend, view=MyView(self.day))  # Edit message correctly.
 
 
 
