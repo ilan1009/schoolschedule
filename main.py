@@ -2,7 +2,7 @@
 import discord
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from discord.ext import commands
+from discord.ext import commands, tasks
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -13,10 +13,17 @@ import datetime
 
 
 class MyView(discord.ui.View):
+    @tasks.loop(minutes=3.0)
+    async def periodicallyEdit(self, interaction):
+        await self.edit(interaction)
+        print("edited")
+
     def __init__(self, day=-1):
         super().__init__(timeout=None)
+        self.currentclass = 'ט - 1'
         self.day = day
         self.timeout = None
+        self.periodicallyEdit.start()
 
     @discord.ui.select(  # the decorator that lets you specify the properties of the select menu
         placeholder="Choose class",  # the placeholder text that will be displayed if nothing is selected
@@ -55,11 +62,16 @@ class MyView(discord.ui.View):
         ]
     )
     async def select_callback(self, interaction, select):  # the function called when the user is done selecting options
-        g = await get_table_schedule(select.values[0], driver, self.day)
-        schedule = g[0]
-        title = g[1]
-        embedtosend = await makeEmbed(schedule, title)
-        await interaction.response.edit_message(embed=embedtosend, view=MyView(self.day))
+        self.currentclass = select.values[0]
+
+        await self.edit(interaction)
+
+    async def edit(self, interaction):
+        g = await get_table_schedule(self.currentclass, driver, self.day)  # Get the schedule and title
+        schedule, title = g[0], g[1]  # Get the schedule and title
+        embedtosend = await makeEmbed(schedule, title)  # Make the embed
+        await interaction.response.edit_message(embed=embedtosend, view=MyView(self.day))  # Edit message correctly.
+
 
 
 URL = "https://www.alliancetlv.com/עדכוני-מערכת"  # URL
@@ -98,39 +110,42 @@ async def get_table_schedule(home_room, driver, day):
     """Gets the schedule changes for specific class and return using SELENIUM WEB DRIVER"""
     if day < 0:
         day = await todayIs() + 1
-    if day == 7:
+    if day == 7:  # Some guards
         return [["No school on saturdays"]], "Saturday"
 
     # Select class from dropdown
     drp_class = WebDriverWait(driver, 10).until(
-        ec.visibility_of_element_located((By.CSS_SELECTOR, '#TimeTableView1_ClassesList')))
-    drp_class = Select(drp_class)
-    drp_class.select_by_visible_text(str(home_room))
+        ec.visibility_of_element_located((By.CSS_SELECTOR, '#TimeTableView1_ClassesList')))  # Dropdown element
+
+    drp_class = Select(drp_class)  # Select using JS
+    drp_class.select_by_visible_text(str(home_room))  # Select using JS
 
     # Select schedule TABLE and click it with JS
     changes_button = WebDriverWait(driver, 10).until(
         ec.visibility_of_element_located((By.CSS_SELECTOR, '#TimeTableView1_btnChangesTable')))
     changes_button.click()
 
+    # Find all rows, because table is organized into rows > cells, which made this slightly harder.
     rowsHolder = WebDriverWait(driver, 10).until(
         ec.visibility_of_element_located((By.CSS_SELECTOR, '.TTTable > tbody:nth-child(1)')))
 
+    # Get all the rows elements/divs
     rows = rowsHolder.find_elements(By.XPATH, '*')
 
-    daytitle = rows[0].find_elements(By.CSS_SELECTOR, ".CTitle")[day - 1].text
+    # Get the daytitle, which is the first row and then get rid of that row.
+    daytitle = rows[0].find_elements(By.CSS_SELECTOR, ".CTitle")[day - 1].text  # So we get the corresponding cell for the day
     rows.pop(0)
 
-    hours = []
-    for row in rows:
-        # print(row.get_attribute("outerHTML"))
+    hours = []  # Empty list init
+    for row in rows:  # Find all cells for the correct day by iterating through rows.
         cells = row.find_elements(By.CSS_SELECTOR, '.TTCell')
         hours.append(cells[day - 1])
-        # print(cells[day-1].get_attribute("outerHTML"))
 
-    hourSchedules = []
+    hourSchedules = []  # More shitty stringbuilder, since no stringbuilder in python.
     for hour in hours:
         hourLessons = []
         try:
+            # Find all the elements blah blah
             hourLessonElements = hour.find_elements(By.CSS_SELECTOR, 'td.TableEventChange')
             if hourLessonElements:
                 for hourLesson in hourLessonElements:
@@ -162,94 +177,64 @@ async def get_table_schedule(home_room, driver, day):
         except Exception as e:
             continue
 
-    """
-    out = []
-    for i, j in enumerate(hourSchedules):
-        jjoined = '\n'.join(j)
-        out.append(f'({i + 1}) | {jjoined}')
-    return f"{home_room}, {daytitle}\n\n" + ("\n\n".join(out))
-    """
-    daytitle = f"{home_room}, {daytitle}"
+    daytitle = f"{home_room}, {daytitle}"  # The title, to be used for embed title.
     return hourSchedules, daytitle
 
 
-async def changeTitle(lesson, hourstitles, i):
+async def changeTitle(lesson, hourstitles, i, j):
+    # Decided to extract this to its own function, too much nesting.
+
+    prefix = hourstitles[i]
+    if j != 0:
+        prefix = "↓"
     if 'diff' in lesson:
-        title = hourstitles[i] + ' - ❌❌❌ - Cancelled'
+        title = prefix + ' - ❌❌ - Cancelled'
     elif 'fix' in lesson:
-        title = hourstitles[i] + ' - ♻♻♻ - Filled in'
+        title = prefix + ' - ♻♻ - Filled in'
     elif 'md' in lesson:
-        title = hourstitles[i] + ' - 📝📝💯 - Exam'
+        title = prefix + ' - 📝💯 - Exam'
     else:
-        title = hourstitles[i]
+        title = prefix
     return title
 
 
 async def makeEmbed(hourSchedules, title):
     hourstitles = ["8:15 - 9:00", "9:00 - 9:45", "10:10, 10:55", "10:55 - 11:40", "12:00 -  12:45", "12:45 - 13:30",
                    "13:50 - 14:30", "14:30 - 15:15"]
-    embed = discord.Embed(title=title, description="", color=discord.Colour.green())
+
+    embed = discord.Embed(title=title, description="", color=discord.Colour.green())  # Init embed
+
     for i, hourall in enumerate(hourSchedules):  # For every "Hour" in schedule
-        for j, hourspecific in enumerate(hourall):
-            if j == 0:  # The first item shouldn't be inline so we can have new lines for each segment of the schedule.
-                embed.add_field(name=await changeTitle(hourspecific, hourstitles, i), value=hourspecific, inline=False)  # First item has a title
-            else:
-                embed.add_field(name=chr(160), value=hourspecific, inline=True)  # Others dont have a title.
-    embed.set_footer(text="bot made by ilan")
+        hourall = hourall[::2]  # Can't have more than 3 lessons on a discord embed in one line.
+        j = 0
+        for hourspecific in hourall:  # Could've used enumerate but this solution allowed me to use the value "j" outside of the loop.
+            embed.add_field(name=await changeTitle(hourspecific, hourstitles, i, j), value=hourspecific,
+                            inline=True)  # First item has a title
+            j += 1
+
+        for k in range(3 - j):  # Pad the line with some empty fields to make sure lines are formatted correctly.
+            embed.add_field(name=chr(160), value=chr(160), inline=True)
+
+    embed.set_footer(text="bot made by ilan")  # Credits, for sure
     return embed
 
 
+intents = discord.Intents.all()  # Send messages, # Message content
+
 # Some options
-intents = discord.Intents.all()
-
-bot = commands.Bot(command_prefix='__', intents=intents)
-
-
-@bot.command(name='sendBigMessage')
-async def send_stuff(message):
-    """Function to schedule the sending of the schedule changes of the selected classes when
-    called at 7:00 every school day by a Cron"""
-
-    print('Sending big message')
-
-    await bot.wait_until_ready()  # Make sure your guild cache is ready
-
-    classes = []
-    for i in range(0, 7):
-        c_i = await get_table_schedule('ט - ' + str(i + 1), driver, -1)
-        classes.append(c_i)
-
-    for i in range(0, len(classes)):
-        await channel.send(str(classes[i]) + '\n.')
+dev_bot_mode = True
+if dev_bot_mode:
+    tokenFile = "vars/devtoken.txt"
+    bot = commands.Bot(command_prefix='__', intents=intents)
+else:
+    tokenFile = "vars/token.txt"
+    bot = commands.Bot(command_prefix='$', intents=intents)
 
 
 @bot.event
 async def on_ready():
     """Runs on ready"""
     print('Connected')
-
-    # Init scheduler
-    scheduler = AsyncIOScheduler()
-    print('Scheduler initiated')
-
-    # Read file to get previously saved ID
-    with open('vars/morningid.txt', 'r') as channelfile:
-        # Issue a warning
-        if channelfile.readline() == '':
-            print('SET CHANNEL URGENTLY')
-        else:
-            global channel  # Set global variable
-            channelfile.seek(0)
-            channelid = channelfile.read()
-            channel = bot.get_channel(int(channelid))
-            if not channel:
-                pass
-            print(channel.name)
-
-    # await send_stuff()
-    # Job that runs send_stuff every day at 7:00
-    scheduler.add_job(send_stuff, 'cron', day_of_week="0, 1, 2, 3, 4, 6", hour="7", minute="5", second="0")
-    scheduler.start()  # Start
 
 
 @bot.command(name='send')
@@ -286,7 +271,7 @@ async def setchannel(ctx):
         print(ctx.channel.name)
 
 
-with open('vars/devtoken.txt', 'r') as file:
+with open(tokenFile, 'r') as file:
     bot.run(file.read())
 
 # print(get_table_schedule('ט - 1', driver))
