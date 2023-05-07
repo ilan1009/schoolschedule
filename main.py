@@ -173,20 +173,28 @@ async def get_table_schedule(home_room, driver, day):
     return hourSchedules, daytitle
 
 
+async def changeTitle(lesson, hourstitles, i):
+    if 'diff' in lesson:
+        title = hourstitles[i] + ' - ❌❌❌ - Cancelled'
+    elif 'fix' in lesson:
+        title = hourstitles[i] + ' - ♻♻♻ - Filled in'
+    elif 'md' in lesson:
+        title = hourstitles[i] + ' - 📝📝💯 - Exam'
+    else:
+        title = hourstitles[i]
+    return title
+
+
 async def makeEmbed(hourSchedules, title):
     hourstitles = ["8:15 - 9:00", "9:00 - 9:45", "10:10, 10:55", "10:55 - 11:40", "12:00 -  12:45", "12:45 - 13:30",
                    "13:50 - 14:30", "14:30 - 15:15"]
     embed = discord.Embed(title=title, description="", color=discord.Colour.green())
-    for i, hourall in enumerate(hourSchedules):
-        k = 0
-        # joinedhour = '\n'.join(hour)
-        # print(hourstitles[i], joinedhour)
-        for hourspecific in hourall:
-            embed.add_field(name=hourstitles[i], value=hourspecific, inline=True)
-            k += 1
-            print(hourstitles[i], "\n", hourspecific)
-        for i in range(3 - k):
-            embed.add_field(name=chr(173), value=chr(173), inline=True)
+    for i, hourall in enumerate(hourSchedules):  # For every "Hour" in schedule
+        for j, hourspecific in enumerate(hourall):
+            if j == 0:  # The first item shouldn't be inline so we can have new lines for each segment of the schedule.
+                embed.add_field(name=await changeTitle(hourspecific, hourstitles, i), value=hourspecific, inline=False)  # First item has a title
+            else:
+                embed.add_field(name=chr(160), value=hourspecific, inline=True)  # Others dont have a title.
     embed.set_footer(text="bot made by ilan")
     return embed
 
@@ -194,7 +202,7 @@ async def makeEmbed(hourSchedules, title):
 # Some options
 intents = discord.Intents.all()
 
-bot = commands.Bot(command_prefix='$', intents=intents)
+bot = commands.Bot(command_prefix='__', intents=intents)
 
 
 @bot.command(name='sendBigMessage')
@@ -278,7 +286,7 @@ async def setchannel(ctx):
         print(ctx.channel.name)
 
 
-with open('token.txt', 'r') as file:
+with open('vars/devtoken.txt', 'r') as file:
     bot.run(file.read())
 
 # print(get_table_schedule('ט - 1', driver))
