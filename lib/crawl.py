@@ -1,4 +1,5 @@
 import logging
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -102,5 +103,5 @@ class driver:
                 hourSchedules.append(hourLessons)
 
         daytitle = f"{home_room}, {daytitle}"  # The title, to be used for embed title.
-        footer_last_updated = ','.join(driver.find_element(By.CSS_SELECTOR, "#TimeTableView1_lblUpdateDate").text.split(',')[0:1])
+        footer_last_updated = ','.join(driver.find_element(By.CSS_SELECTOR, "#TimeTableView1_lblUpdateDate").text.split(',')[0:2])
         return hourSchedules, daytitle, footer_last_updated

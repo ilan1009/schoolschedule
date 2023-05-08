@@ -1,5 +1,6 @@
-from discord import Embed, Colour
 from datetime import date
+
+from discord import Embed, Colour
 
 
 def todayIs():

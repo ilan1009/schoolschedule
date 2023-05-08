@@ -1,6 +1,8 @@
-import discord
-from discord.ext import commands, tasks
 import logging
+
+import discord
+from discord.ext import commands
+
 from utilfunctions import todayIs, makeEmbed
 
 logger = logging.getLogger(__name__)
@@ -12,10 +14,9 @@ class MyView(discord.ui.View):
         self.currentclass = homeroom
         if day == -1:
             self.day = todayIs() + 1
-            logger.info(f'day {self.day} (+1 for actual day) automatically detected')
         else:
             self.day = day
-        self.timeout = None
+        self.timeout = None  # Not sure if this does anything but i'll keep it.
         self.interaction = None
         self.driver = driver
 
@@ -27,7 +28,7 @@ class MyView(discord.ui.View):
         options=[
             discord.SelectOption(
                 label="ט - 1",
-                description="כיתת הNPCS "
+                description="כיתה של אנשים יחודיים שאפשר לשחק כהם במשחק"
             ),
             discord.SelectOption(
                 label="ט - 2",
@@ -62,21 +63,19 @@ class MyView(discord.ui.View):
         await self.edit()
 
     @discord.ui.button(label="Day Backwards", custom_id="backwards-grey")
-    async def back(self, interaction: discord.Interaction, button: discord.Button):
+    async def back(self, interaction: discord.Interaction):
         self.day -= 1
         if self.day == 6:
             self.day = 1
         self.interaction = interaction
-        logger.info(f'day {self.day} (+1 for actual day) requested by {self.interaction.user.name}')
         await self.edit()
 
     @discord.ui.button(label="Day Forwards", custom_id="forwards-grey")
-    async def forw(self, interaction: discord.Interaction, button: discord.Button):
+    async def forw(self, interaction: discord.Interaction):
         self.day += 1
         if self.day == 0:
             self.day = 5
         self.interaction = interaction
-        logger.info(f'day {self.day} (+1 for actual day) requested by {self.interaction.user.name}')
         await self.edit()
 
     async def edit(self):
@@ -90,6 +89,9 @@ class MyView(discord.ui.View):
                                                                  view=MyView(self.driver,
                                                                              day=self.day,
                                                                              homeroom=self.currentclass))  # Edit message correctly.
+
+                    logger.info(f'Schedule of class "{self.currentclass}" for day {self.day} requested by {self.interaction.user.name} in {self.interaction.channel}')
+
             except discord.errors.NotFound:
                 continue
             break

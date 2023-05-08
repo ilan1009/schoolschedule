@@ -1,3 +1,6 @@
 # Default ignored files
 \.idea/
 venv/
+chromedriver.exe
+vars/devtoken.txt
+vars/token.txt

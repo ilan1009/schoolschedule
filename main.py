@@ -1,7 +1,8 @@
 """A new discord bot by chips"""
-import bot
-import crawl
 import logging
+
+import lib.bot as bot
+import lib.crawl as crawl
 
 
 def main():
